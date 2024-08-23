@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.table-data {
+    @apply mx-1 px-2 md:mx-3 md:px-3 py-1 rounded-lg
+}
+
+.button {
+    @apply p-1 px-4 flex justify-center items-center border-none rounded-lg shadow-lg bg-zinc-600
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: #27272a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 6px;
+}
