@@ -70,28 +70,6 @@ const Home: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-
-      if (event.code === "Space" && !isInputField) {
-        event.preventDefault()
-        startScanning()
-      } else if (event.code === 's') {
-        event.preventDefault()
-        stopScanning()
-      } else if (event.code === 'Enter' && newField && barcode && selectedRow !== -1) {
-        handleAddBarcode()
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [newField, barcode, selectedRow])
-
   // this function is for drag and drop file
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -143,13 +121,49 @@ const Home: React.FC = () => {
     setSelectedRow(-1)
   }
 
+  const handleSaveFile = () => {
+    const csv = Papa.unparse(csvData)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName ? `${fileName.split('.').slice(0, -1).join('.')}_barcoded.csv` : 'file_barcoded.csv';
+    link.style.visibility = 'hidden'
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      if (event.code === "Space" && !isInputField) {
+        event.preventDefault()
+        startScanning()
+      } else if (event.code === 's') {
+        event.preventDefault()
+        stopScanning()
+      } else if (event.code === 'Enter' && newField && barcode && selectedRow !== -1) {
+        handleAddBarcode()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [newField, barcode, selectedRow])
+
   return (
     <div className='w-full min-h-dvh p-10 flex justify-around bg-background text-txt'>
       <div className="scanner w-4/12 h-fit p-10 rounded-lg shadow-lg flex flex-col gap-2 items-center bg-base">
         <select
           value={selectedDevice?.deviceId || ""}
           onChange={e => setSelectedDevice(videoDevices.find(camera => camera.deviceId === e.target.value) || null)}
-          className='cam-select w-full p-2 border border-base-2 rounded-lg shadow-lg bg-base-3'
+          className='cam-select w-full p-2 border border-base-2 rounded-lg shadow-lg bg-base-2'
         >
           <option value="">Select a camera</option>
           {videoDevices.map(camera =>
@@ -231,6 +245,9 @@ const Home: React.FC = () => {
                       placeholder='Barcode field name...'
                       value={newField}
                       onChange={(e) => setNewField(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newField) handleAddField()
+                      }}
                       className='w-1/3 border-b border-base-2 p-1 pb-0 bg-transparent focus:ring-0 '
                     />
                     <button
@@ -270,7 +287,7 @@ const Home: React.FC = () => {
                       <tr
                         key={index1}
                         onClick={() => setSelectedRow(orgInd)}
-                        className={`border-b border-base-2 text-sm hover:cursor-pointer ${index1 === selectedRow ? 'bg-base-3 hover:bg-base-3' : 'hover:bg-gradient-to-t hover:from-base-2 hover:to-10% hover:to-base'}`}
+                        className={`border-b border-base-2 text-sm hover:cursor-pointer ${orgInd === selectedRow ? 'bg-base-3 hover:bg-base-3' : 'hover:bg-gradient-to-t hover:from-base-2 hover:to-10% hover:to-base'}`}
                       >
                         <td className='px-4 py-2 whitespace-nowrap'>{orgInd + 1}</td>
                         {row.map((data: string, index2: number) => (
@@ -291,6 +308,8 @@ const Home: React.FC = () => {
                 Add to the row
               </button>
               <button
+                onClick={handleSaveFile}
+                disabled={csvData.length === 0}
                 className='button bg-sky-600'
               >
                 Save file
