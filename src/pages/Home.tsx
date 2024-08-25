@@ -21,6 +21,8 @@ const Home: React.FC = () => {
   const [newFieldAdded, setNewFieldAdded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRow, setSelectedRow] = useState(-1)
+  
+  const [errMessage, setErrMessage] = useState('')
 
   useEffect(() => {
     const getVideoDevices = async () => {
@@ -34,6 +36,7 @@ const Home: React.FC = () => {
         }
       } catch (error) {
         console.error("Error getting video devices: ", error)
+        setErrMessage('Please allow camera access to scan Barcode...')
       }
     }
 
