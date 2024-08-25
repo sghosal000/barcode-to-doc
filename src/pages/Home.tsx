@@ -3,6 +3,16 @@ import Webcam from 'react-webcam'
 import { BrowserMultiFormatReader, NotFoundException, Result } from '@zxing/library'
 import Papa from 'papaparse'
 
+import { FileType } from '../types/filesType'
+import { generateUniqueId } from '../utils/utils'
+
+const LS_FILESNAME = 'fileList'
+interface CsvData {
+  fileName: string;
+  data: string[][];
+}
+
+
 const Home: React.FC = () => {
   const webcamRef = useRef<Webcam>(null)
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
@@ -15,13 +25,14 @@ const Home: React.FC = () => {
 
   const [dragActive, setDragActive] = useState(false)
   const [fileUploaded, setFileUploaded] = useState(false)
-  const [csvData, setCsvData] = useState<string[][]>([])
-  const [fileName, setFileName] = useState('')
+  const [csvData, setCsvData] = useState<CsvData>({ fileName: '', data: [] })
   const [newField, setNewField] = useState('')
   const [newFieldAdded, setNewFieldAdded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRow, setSelectedRow] = useState(-1)
-  
+
+  const [fileHistory, setFileHistory] = useState<FileType[]>([])
+
   const [errMessage, setErrMessage] = useState('')
 
   useEffect(() => {
@@ -89,36 +100,45 @@ const Home: React.FC = () => {
 
   const handleFileUpload = (file: File) => {
     if (file) {
-      setFileName(file.name)
       Papa.parse(file, {
         complete: (result: any) => {
-          setCsvData(result.data as string[][])
-          setFileUploaded(true)
+          const data = result.data as string[][]
+          const newFile: FileType = {
+            id: generateUniqueId(),
+            fileName: file.name,
+            type: file.type,
+            data,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            size: `${(file.size / 1024).toFixed(2)}KB`
+          }
+          saveFileToLocalstorage(newFile)
+          setCsvData({ fileName: file.name, data })
         }
       })
     }
   }
 
-  const filteredData = csvData.slice(1).map((row: string[], index: number) => ({ row, orgInd: index })).filter(({ row }) =>
+  const filteredData = csvData.data.slice(1).map((row: string[], index: number) => ({ row, orgInd: index })).filter(({ row }) =>
     row.some(cell =>
       cell.toLocaleLowerCase().includes(searchQuery.toLowerCase())))
 
   const handleAddField = () => {
     if (newField) {
-      const newCsvData = csvData
-      newCsvData[0] = [newField, ...csvData[0]]
-      for (let i = 1; i < csvData.length; i++) {
-        newCsvData[i] = ['', ...csvData[i]]
+      const newCsvData = csvData.data
+      newCsvData[0] = [newField, ...csvData.data[0]]
+      for (let i = 1; i < csvData.data.length; i++) {
+        newCsvData[i] = ['', ...csvData.data[i]]
       }
 
-      setCsvData(newCsvData)
+      setCsvData({ ...csvData, data: newCsvData })
       setNewFieldAdded(true)
     }
   }
 
   const handleAddBarcode = () => {
     const newCsvData = csvData
-    newCsvData[selectedRow + 1] = [barcode, ...csvData[selectedRow + 1].slice(1)]
+    newCsvData.data[selectedRow + 1] = [barcode, ...csvData.data[selectedRow + 1].slice(1)]
     setCsvData(newCsvData)
     setBarcode('')
     setSelectedRow(-1)
@@ -130,13 +150,68 @@ const Home: React.FC = () => {
 
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = fileName ? `${fileName.split('.').slice(0, -1).join('.')}_barcoded.csv` : 'file_barcoded.csv';
+    link.download = csvData.fileName ? `${csvData.fileName.split('.').slice(0, -1).join('.')}_barcoded.csv` : 'file_barcoded.csv';
     link.style.visibility = 'hidden'
 
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
   }
+
+  // This section for handling localstorage
+  const getLocalstorageFile = () => JSON.parse(localStorage.getItem(LS_FILESNAME) || '[]')
+  const setLocalstorageFile = (files: FileType[]) => localStorage.setItem(LS_FILESNAME, JSON.stringify(files))
+  const saveFiles = (files: FileType[]) => {
+    setLocalstorageFile(files)
+    setFileHistory(files)
+  }
+
+  const loadFilesFromLocalstorage = () => {
+    const existingFIles = getLocalstorageFile()
+    setFileHistory(existingFIles)
+  }
+
+  const saveFileToLocalstorage = (file: FileType) => {
+    const existingFIles = getLocalstorageFile()
+    const updatedFiles = [file, ...existingFIles]
+
+    saveFiles(updatedFiles)
+  }
+
+  const removeFileFromLocalstorage = (id: FileType['id']) => {
+    const existingFIles = getLocalstorageFile()
+    const updatedFiles = existingFIles.filter((file: FileType) => file.id !== id)
+
+    saveFiles(updatedFiles)
+  }
+
+  const renameFileInLocalstorage = (id: FileType['id'], name: string) => {
+    const existingFIles = getLocalstorageFile()
+    const updatedFiles = existingFIles.map((file: FileType) =>
+      file.id === id ? { ...file, fileName: name, updatedAt: new Date().toISOString() } : file
+    )
+
+    saveFiles(updatedFiles)
+  }
+
+  const updateFileDataInLocalstorage = (id: FileType['id'], file: FileType) => {
+    const existingFIles = getLocalstorageFile()
+    const updatedFiles = existingFIles.map((file: FileType) =>
+      file.id === id ? { ...file, data: file, updatedAt: new Date().toISOString() } : file
+    )
+
+    saveFiles(updatedFiles)
+  }
+
+  useEffect(() => {
+    loadFilesFromLocalstorage()
+  }, [])
+
+  useEffect(() => {
+    if (csvData.fileName && csvData.data.length !== 0) setFileUploaded(true)
+    else setFileUploaded(false)
+  }, [csvData])
+
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -231,12 +306,12 @@ const Home: React.FC = () => {
 
               : <div className='w-full flex gap-1 items-center border-b-2 border-base-2 pb-1'>
                 <img src="https://www.svgrepo.com/show/458680/file-dock.svg" alt="file" className='h-4 invert' />
-                <span>File: <span className='text-txt-depressed'>{fileName}</span></span>
+                <span>File: <span className='text-txt-depressed'>{csvData.fileName}</span></span>
               </div>
           }
         </div>
         {
-          csvData.length > 0 &&
+          fileUploaded &&
           <div className='flex flex-col gap-4'>
             <div className='table-header w-full flex justify-between items-end'>
               {
@@ -279,7 +354,7 @@ const Home: React.FC = () => {
                 <thead className='sticky top-0 bg-base-2 shadow-md'>
                   <tr>
                     <th className='px-4 py-2 whitespace-nowrap'>Sno</th>
-                    {csvData[0].map((data: string, index: number) => (
+                    {csvData.data[0].map((data: string, index: number) => (
                       <th key={index} className="px-4 py-2 whitespace-nowrap">{data}</th>
                     ))}
                   </tr>
@@ -312,7 +387,7 @@ const Home: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveFile}
-                disabled={csvData.length === 0}
+                disabled={csvData.data.length === 0}
                 className='button bg-sky-600'
               >
                 Save file
