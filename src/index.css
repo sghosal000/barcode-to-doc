@@ -15,6 +15,10 @@ input[type="text"] {
     @apply p-1 px-4 flex justify-center items-center border-none rounded-lg shadow-xl bg-base-3 hover:bg-base-3/90 hover:text-txt-depressed disabled:bg-base-2 disabled:text-txt-depressed
 }
 
+.font-base {
+    @apply font-karla
+}
+
 ::-webkit-scrollbar {
     width: 5px;
     height: 5px;

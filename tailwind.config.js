@@ -5,6 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+		fontFamily: {
+			quicksand: ["Quicksand", "sans-serif"],
+			karla: ["Karla", "sans-serif"],
+			evwn: ["Edu VIC WA NT Beginner", "cursive"],
+		},
     extend: {
       colors: {
 				background: "#18181b",		// (zinc-900)
