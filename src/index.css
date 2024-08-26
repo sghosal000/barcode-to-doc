@@ -12,7 +12,7 @@ input[type="text"] {
 }
 
 .button {
-    @apply p-1 px-4 flex justify-center items-center border-none rounded-lg shadow-xl bg-zinc-600 hover:bg-zinc-700
+    @apply p-1 px-4 flex justify-center items-center border-none rounded-lg shadow-xl bg-base-3 hover:bg-base-3/90 hover:text-txt-depressed disabled:bg-base-2 disabled:text-txt-depressed
 }
 
 ::-webkit-scrollbar {
